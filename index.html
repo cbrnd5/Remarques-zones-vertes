@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Remarques citoyennes – Métropole lilloise</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    header { padding: 12px 16px; background: #1f2937; color: white; }
+    main { display: grid; grid-template-columns: 2fr 1fr; height: calc(100vh - 60px); }
+    #map { height: 100%; }
+    #panel { padding: 12px; overflow-y: auto; border-left: 1px solid #ddd; }
+
+    h2 { margin-top: 0; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    textarea { width: 100%; height: 100px; }
+    input[type="file"] { width: 100%; }
+    button { margin-top: 12px; padding: 8px 12px; cursor: pointer; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+    th, td { border: 1px solid #ccc; padding: 6px; vertical-align: top; }
+    th { background: #f3f4f6; }
+
+    .zone-id { font-weight: bold; }
+    .note { font-size: 12px; color: #555; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Plateforme de remarques – Zone cartographiée</h1>
+  <div class="note">Cliquez sur la carte pour sélectionner votre zone (~100 m²), ajoutez jusqu'à 3 photos et un commentaire.</div>
+</header>
+
+<main>
+  <div id="map"></div>
+  <div id="panel">
+    <h2>Nouvelle remarque</h2>
+    <div id="selectedZone">Aucune zone sélectionnée</div>
+
+    <label for="comment">Commentaire (max 1000 caractères)</label>
+    <textarea id="comment" maxlength="1000"></textarea>
+
+    <label for="photos">Photos (max 3)</label>
+    <input id="photos" type="file" accept="image/*" multiple />
+
+    <button id="submit">Envoyer</button>
+
+    <h2>Récapitulatif par zone</h2>
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Zone</th>
+          <th>Commentaires</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+  /* ---------------- MAP ---------------- */
+  const map = L.map('map').setView([50.6292, 3.0573], 12); // Lille
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  // --- Polygone rouge (à remplacer par le vrai tracé si dispo en GeoJSON)
+  const redZone = L.rectangle([
+    [50.58, 2.98],
+    [50.67, 3.13]
+  ], { color: 'red', weight: 2, fill: false }).addTo(map);
+
+  // --- Grille ~100 m x 100 m (simplifiée)
+  const gridSize = 0.001; // ~100 m en latitude
+  let selectedCell = null;
+  let gridLayer = L.layerGroup().addTo(map);
+
+  function generateGrid(bounds) {
+    gridLayer.clearLayers();
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+
+    let id = 0;
+    for (let lat = sw.lat; lat < ne.lat; lat += gridSize) {
+      for (let lng = sw.lng; lng < ne.lng; lng += gridSize) {
+        const cell = L.rectangle([
+          [lat, lng],
+          [lat + gridSize, lng + gridSize]
+        ], { color: '#999', weight: 1, fillOpacity: 0.05 });
+
+        cell.zoneId = `Z-${id++}`;
+
+        cell.on('click', () => selectZone(cell));
+        gridLayer.addLayer(cell);
+      }
+    }
+  }
+
+  generateGrid(redZone.getBounds());
+
+  function selectZone(cell) {
+    if (selectedCell) selectedCell.setStyle({ fillOpacity: 0.05 });
+    selectedCell = cell;
+    cell.setStyle({ fillOpacity: 0.3 });
+    document.getElementById('selectedZone').innerHTML = `Zone sélectionnée : <span class="zone-id">${cell.zoneId}</span>`;
+  }
+
+  /* ---------------- DATA ---------------- */
+  const storageKey = 'remarks-data';
+  let data = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+  function saveData() {
+    localStorage.setItem(storageKey, JSON.stringify(data));
+  }
+
+  function refreshTable() {
+    const tbody = document.querySelector('#dataTable tbody');
+    tbody.innerHTML = '';
+
+    for (const zone in data) {
+      const tr = document.createElement('tr');
+      const tdZone = document.createElement('td');
+      const tdComments = document.createElement('td');
+
+      tdZone.textContent = zone;
+      tdComments.innerHTML = data[zone].map(c => `<p>${c.comment}</p>`).join('');
+
+      tr.appendChild(tdZone);
+      tr.appendChild(tdComments);
+      tbody.appendChild(tr);
+    }
+  }
+
+  refreshTable();
+
+  /* ---------------- SUBMIT ---------------- */
+  document.getElementById('submit').addEventListener('click', () => {
+    if (!selectedCell) {
+      alert('Veuillez sélectionner une zone sur la carte.');
+      return;
+    }
+
+    const comment = document.getElementById('comment').value.trim();
+    const files = document.getElementById('photos').files;
+
+    if (files.length > 3) {
+      alert('Maximum 3 photos autorisées.');
+      return;
+    }
+
+    if (!data[selectedCell.zoneId]) data[selectedCell.zoneId] = [];
+
+    data[selectedCell.zoneId].push({
+      comment,
+      date: new Date().toISOString()
+    });
+
+    saveData();
+    refreshTable();
+
+    document.getElementById('comment').value = '';
+    document.getElementById('photos').value = '';
+
+    alert('Merci pour votre contribution !');
+  });
+</script>
+
+</body>
+</html>
