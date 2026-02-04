@@ -422,8 +422,10 @@
 
             <div class="filters">
                 <div class="filter-group">
-                    <label for="zoneFilter">Filtrer par zone</label>
-                    <select id="zoneFilter">
+                    <label for="zoneFilterInput">Filtrer par zone</label>
+                    <input list="zoneList" id="zoneFilterInput" placeholder="Tapez une zone ou choisissez..." />
+                    <datalist id="zoneList"></datalist>
+                    <select id="zoneFilter" aria-label="Sélectionner une zone" style="margin-top:6px;">
                         <option value="">Toutes les zones</option>
                     </select>
                 </div>
@@ -530,15 +532,45 @@
 
         function populateZoneFilter() {
             const zoneFilter = document.getElementById('zoneFilter');
-            const zones = new Set(feedbackData.map(f => f.zone));
-            
+            const zoneInput = document.getElementById('zoneFilterInput');
+            const zoneList = document.getElementById('zoneList');
+
+            // Normalize zones: trim, ignore empty/null, deduplicate
+            const zoneSet = new Set(feedbackData.map(f => (f.zone || '').toString().trim()).filter(z => z));
+
             zoneFilter.innerHTML = '<option value="">Toutes les zones</option>';
-            Array.from(zones).sort().forEach(zone => {
+            const zones = Array.from(zoneSet).sort();
+            zones.forEach(zone => {
                 const option = document.createElement('option');
                 option.value = zone;
                 option.textContent = zone;
                 zoneFilter.appendChild(option);
             });
+
+            // Populate datalist for typing suggestions
+            if (zoneList) {
+                zoneList.innerHTML = zones.map(z => `<option value="${z}"></option>`).join('');
+            }
+
+            // Update placeholder for the input
+            if (zoneInput) {
+                zoneInput.placeholder = zones.length ? 'Tapez une zone ou choisissez...' : 'Aucune zone disponible';
+            }
+
+            // Debug: show available zones in console for troubleshooting
+            console.debug('populateZoneFilter -> zones:', zones);
+
+            // Optional small on-page debug indicator (visible only if no zones)
+            let debugEl = document.getElementById('zoneDebug');
+            if (!debugEl) {
+                debugEl = document.createElement('div');
+                debugEl.id = 'zoneDebug';
+                debugEl.style.fontSize = '12px';
+                debugEl.style.color = '#666';
+                debugEl.style.marginTop = '6px';
+                zoneFilter.parentNode.appendChild(debugEl);
+            }
+            debugEl.textContent = zones.length ? `Zones disponibles: ${zones.join(', ')}` : 'Aucune zone détectée';
         }
 
         function updateTable() {
@@ -581,17 +613,21 @@
         }
 
         function applyFilters() {
-            const zoneFilter = document.getElementById('zoneFilter').value;
-            const themeFilter = document.getElementById('themeFilter').value;
-            const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+            const zoneInputVal = (document.getElementById('zoneFilterInput') && document.getElementById('zoneFilterInput').value) ? document.getElementById('zoneFilterInput').value.toString().trim() : '';
+            const zoneSelectVal = (document.getElementById('zoneFilter').value || '').toString().trim();
+            const zoneFilter = zoneInputVal || zoneSelectVal;
+            const themeFilter = (document.getElementById('themeFilter').value || '').toString().trim();
+            const searchFilter = (document.getElementById('searchFilter').value || '').toLowerCase().trim();
 
             filteredData = feedbackData.filter(feedback => {
-                const matchesZone = !zoneFilter || feedback.zone === zoneFilter;
-                const matchesTheme = !themeFilter || feedback.theme === themeFilter;
-                const matchesSearch = !searchFilter || feedback.comment.toLowerCase().includes(searchFilter);
+                const fZone = (feedback.zone || '').toString().trim();
+                const matchesZone = !zoneFilter || fZone === zoneFilter;
+                const matchesTheme = !themeFilter || (feedback.theme || '') === themeFilter;
+                const matchesSearch = !searchFilter || (feedback.comment || '').toLowerCase().includes(searchFilter);
                 return matchesZone && matchesTheme && matchesSearch;
             });
 
+            console.debug('applyFilters -> zoneFilter:', zoneFilter, 'filteredCount:', filteredData.length);
             updateTable();
         }
 
@@ -650,7 +686,10 @@
         }
 
         // Event listeners
-        document.getElementById('zoneFilter').addEventListener('change', applyFilters);
+        const zoneFilterEl = document.getElementById('zoneFilter');
+        const zoneInputEl = document.getElementById('zoneFilterInput');
+        if (zoneFilterEl) zoneFilterEl.addEventListener('change', function(){ if(zoneInputEl) zoneInputEl.value = ''; applyFilters(); });
+        if (zoneInputEl) zoneInputEl.addEventListener('input', applyFilters);
         document.getElementById('themeFilter').addEventListener('change', applyFilters);
         document.getElementById('searchFilter').addEventListener('input', applyFilters);
 
