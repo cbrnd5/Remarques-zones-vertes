@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plateforme de Recensement - MEL & Centrale Lille</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            color: white;
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content {
+            flex: 1;
+        }
+
+        header h1 {
+            font-size: 2.2em;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            font-size: 1.05em;
+            opacity: 0.95;
+        }
+
+        .header-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 15px;
+        }
+
+        .logos {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .logo-item {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            color: #c31432;
+            font-size: 1.2em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .user-points {
+            background: rgba(255,255,255,0.2);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-points .points-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .user-points .points-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .map-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-right: 3px solid #c31432;
+        }
+
+        .map-section h2 {
+            color: #c31432;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .map-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #c31432;
+        }
+
+        .map-info strong {
+            color: #c31432;
+        }
+
+        #map {
+            height: 550px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 3px solid #c31432;
+        }
+
+        .form-section {
+            padding: 30px;
+        }
+
+        .form-section h2 {
+            color: #c31432;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #c31432;
+        }
+
+        .form-group select {
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: inherit;
+        }
+
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .theme-option {
+            position: relative;
+        }
+
+        .theme-option input[type="radio"] {
+            display: none;
+        }
+
+        .theme-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .theme-label .label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+        }
+
+        .theme-option input[type="radio"]:checked + .theme-label {
+            border-color: #c31432;
+            background: #fff5f5;
+            transform: scale(1.05);
+        }
+
+        .theme-label:hover {
+            border-color: #c31432;
+            background: #fff5f5;
+        }
+
+        .photo-upload {
+            border: 2px dashed #c31432;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #fff5f5;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .photo-upload:hover {
+            background: #ffe5e5;
+            border-color: #8b0a1a;
+        }
+
+        .photo-upload input {
+            display: none;
+        }
+
+        .photo-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .photo-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #c31432;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 1.5em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(195, 20, 50, 0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(195, 20, 50, 0.4);
+        }
+
+        .admin-link {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+            z-index: 1000;
+        }
+
+        .admin-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+        }
+
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+        }
+
+        .alert {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin-bottom: 10px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert-success {
+            border-left: 5px solid #4CAF50;
+        }
+
+        .alert-error {
+            border-left: 5px solid #f44336;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .char-counter {
+            text-align: right;
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .char-counter.warning {
+            color: #c31432;
+            font-weight: bold;
+        }
+
+        .previous-comments {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .previous-comments h3 {
+            color: #c31432;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .comment-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #c31432;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .comment-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .comment-theme {
+            background: #c31432;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .comment-text {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .comment-photos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+
+        .comment-photos img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            cursor: pointer;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            max-width: 90%;
+            max-height: 90%;
+            position: relative;
+        }
+
+        .modal-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: 10px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .zone-tooltip {
+            background: #c31432 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 5px !important;
+            padding: 5px 10px !important;
+            font-weight: bold !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
+        }
+
+        .leaflet-tooltip-left.zone-tooltip::before,
+        .leaflet-tooltip-right.zone-tooltip::before {
+            border-left-color: #c31432 !important;
+            border-right-color: #c31432 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>🗺️ Recensement du Mobilier Urbain</h1>
+                <p>Aidez-nous à améliorer notre territoire - Zone Basse Deûle et Lys</p>
+            </div>
+            <div class="header-right">
+                <div class="logos">
+                    <div class="logo-item">MEL</div>
+                    <div class="logo-item">Centrale Lille</div>
+                </div>
+                <div class="user-points">
+                    <div>
+                        <div class="points-value" id="userPoints">0</div>
+                        <div class="points-label">points</div>
+                    </div>
+                    🏆
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="map-section">
+                <h2>📍 Sélectionnez une zone</h2>
+                <div class="map-info">
+                    <strong>Instructions :</strong> Cliquez sur une zone de la carte pour la sélectionner et partager vos observations.
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <div class="form-section">
+                <h2>✏️ Votre contribution</h2>
+                <form id="feedbackForm">
+                    <div class="form-group">
+                        <label>Zone sélectionnée</label>
+                        <input type="text" id="zoneName" readonly placeholder="Cliquez sur la carte pour sélectionner une zone">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Type de mobilier urbain *</label>
+                        <div class="theme-selector">
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme1" value="Banc">
+                                <label for="theme1" class="theme-label">
+                                    <span class="label">Banc</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme2" value="Table">
+                                <label for="theme2" class="theme-label">
+                                    <span class="label">Table</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme3" value="Poteau(x)">
+                                <label for="theme3" class="theme-label">
+                                    <span class="label">Poteau(x)</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme4" value="Panneau">
+                                <label for="theme4" class="theme-label">
+                                    <span class="label">Panneau</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme5" value="Pont">
+                                <label for="theme5" class="theme-label">
+                                    <span class="label">Pont</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme6" value="Barrière">
+                                <label for="theme6" class="theme-label">
+                                    <span class="label">Barrière</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme7" value="Escalier">
+                                <label for="theme7" class="theme-label">
+                                    <span class="label">Escalier</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme8" value="Poubelle">
+                                <label for="theme8" class="theme-label">
+                                    <span class="label">Poubelle</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme9" value="Lampadaire">
+                                <label for="theme9" class="theme-label">
+                                    <span class="label">Lampadaire</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme10" value="Mobilier de sport">
+                                <label for="theme10" class="theme-label">
+                                    <span class="label">Mobilier de sport</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme11" value="Autre">
+                                <label for="theme11" class="theme-label">
+                                    <span class="label">Autre</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comment">Description (optionnel)</label>
+                        <textarea id="comment" placeholder="Décrivez le mobilier, son état, son emplacement..." maxlength="1000"></textarea>
+                        <div class="char-counter" id="charCounter">0 / 1000 caractères</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Photos (max 3)</label>
+                        <div class="photo-upload" onclick="document.getElementById('photoInput').click()">
+                            <input type="file" id="photoInput" accept="image/*" multiple>
+                            <p style="font-size: 1.2em; margin-bottom: 10px;">📸 Cliquez pour ajouter des photos</p>
+                            <p style="color: #666; font-size: 0.9em;">JPG, PNG - Maximum 3 photos</p>
+                        </div>
+                        <div class="photo-preview" id="photoPreview"></div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">🚀 Envoyer ma contribution</button>
+                </form>
+
+                <div class="previous-comments" id="previousComments" style="display: none;">
+                    <h3>💬 Contributions précédentes pour cette zone</h3>
+                    <div id="commentsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a href="admin-1.html" class="admin-link">📊 Tableau récapitulatif</a>
+
+    <div id="alertContainer" class="alert-container"></div>
+
+    <div class="modal" id="imageModal" onclick="this.classList.remove('active')">
+        <div class="modal-content">
+            <span class="modal-close" onclick="event.stopPropagation(); this.parentElement.parentElement.classList.remove('active')">×</span>
+            <img id="modalImage" src="" alt="Image agrandie">
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let userPoints = parseInt(localStorage.getItem('userPoints') || '0');
+        document.getElementById('userPoints').textContent = userPoints;
+
+        // Initialisation de la carte
+        const map = L.map('map').setView([50.71, 3.0], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Coordonnées du polygone de la zone d'étude
+        const studyAreaCoords = [
+            [50.76, 3.14],
+            [50.76, 3.18],
+            [50.80, 3.13],
+            [50.78, 2.99],
+            [50.70, 2.86],
+            [50.69, 2.82],
+            [50.65, 2.80],
+            [50.69, 2.99],
+            [50.70, 2.99],
+            [50.65, 3.05],
+            [50.63, 3.02],
+            [50.63, 3.05],
+            [50.65, 3.08],
+            [50.71, 3.05],
+            [50.72, 2.98],
+            [50.75, 3.12],
+            [50.76, 3.14]
+        ];
+
+        // Afficher le périmètre de la zone d'étude
+        const studyAreaLayer = L.polygon(studyAreaCoords, {
+            color: '#c31432',
+            fillColor: '#c31432',
+            fillOpacity: 0.1,
+            weight: 3
+        }).addTo(map);
+
+        // Centrer la carte sur la zone
+        map.fitBounds(studyAreaLayer.getBounds());
+
+        // Fonction pour vérifier si un point est à l'intérieur du polygone (Ray Casting Algorithm)
+        function isPointInPolygon(point, polygon) {
+            const x = point[0], y = point[1];
+            let inside = false;
+            
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+                
+                const intersect = ((yi > y) !== (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            
+            return inside;
+        }
+
+        // Fonction pour vérifier si un rectangle intersecte le polygone
+        function rectangleIntersectsPolygon(rectBounds, polygon) {
+            // Vérifier si au moins un coin du rectangle est dans le polygone
+            const corners = [
+                [rectBounds[0][0], rectBounds[0][1]], // SW
+                [rectBounds[1][0], rectBounds[1][1]], // SE
+                [rectBounds[2][0], rectBounds[2][1]], // NE
+                [rectBounds[3][0], rectBounds[3][1]]  // NW
+            ];
+            
+            for (let corner of corners) {
+                if (isPointInPolygon(corner, polygon)) {
+                    return true;
+                }
+            }
+            
+            // Vérifier si le centre est dans le polygone
+            const centerLat = (rectBounds[0][0] + rectBounds[2][0]) / 2;
+            const centerLng = (rectBounds[0][1] + rectBounds[2][1]) / 2;
+            if (isPointInPolygon([centerLat, centerLng], polygon)) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Créer environ 1000 zones (grille 32x32)
+        const gridRows = 32;
+        const gridCols = 32;
+        let zones = [];
+        let selectedZone = null;
+        let currentMarker = null;
+
+        const bounds = studyAreaLayer.getBounds();
+        const minLat = bounds.getSouth();
+        const maxLat = bounds.getNorth();
+        const minLng = bounds.getWest();
+        const maxLng = bounds.getEast();
+
+        const latStep = (maxLat - minLat) / gridRows;
+        const lngStep = (maxLng - minLng) / gridCols;
+
+        let zoneNumber = 1;
+
+        // Créer les zones en grille
+        for (let row = 0; row < gridRows; row++) {
+            for (let col = 0; col < gridCols; col++) {
+                const zoneBounds = [
+                    [minLat + (row * latStep), minLng + (col * lngStep)],           // SW
+                    [minLat + (row * latStep), minLng + ((col + 1) * lngStep)],     // SE
+                    [minLat + ((row + 1) * latStep), minLng + ((col + 1) * lngStep)], // NE
+                    [minLat + ((row + 1) * latStep), minLng + (col * lngStep)]      // NW
+                ];
+
+                // Vérifier si cette zone intersecte le polygone d'étude
+                if (rectangleIntersectsPolygon(zoneBounds, studyAreaCoords)) {
+                    const zoneId = `Zone ${zoneNumber.toString().padStart(4, '0')}`;
+                    
+                    const zoneRect = L.polygon(zoneBounds, {
+                        color: '#c31432',
+                        fillColor: '#ffffff',
+                        fillOpacity: 0.05,
+                        weight: 0.5,
+                        opacity: 0.3
+                    }).addTo(map);
+
+                    zoneRect.zoneId = zoneId;
+                    zoneRect.zoneBounds = zoneBounds;
+
+                    zoneRect.bindTooltip(zoneId, {
+                        permanent: false,
+                        direction: 'center',
+                        className: 'zone-tooltip'
+                    });
+
+                    zoneRect.on('click', function(e) {
+                        selectZone(this.zoneId, this.zoneBounds, e.latlng);
+                    });
+
+                    zoneRect.on('mouseover', function() {
+                        if (this.zoneId !== selectedZone) {
+                            this.setStyle({
+                                fillColor: '#c31432',
+                                fillOpacity: 0.2
+                            });
+                        }
+                    });
+
+                    zoneRect.on('mouseout', function() {
+                        if (this.zoneId !== selectedZone) {
+                            this.setStyle({
+                                fillColor: '#ffffff',
+                                fillOpacity: 0.05
+                            });
+                        }
+                    });
+
+                    zones.push({
+                        id: zoneId,
+                        polygon: zoneRect,
+                        bounds: zoneBounds
+                    });
+
+                    zoneNumber++;
+                }
+            }
+        }
+
+        console.log(`${zones.length} zones créées dans la zone d'étude`);
+
+        function selectZone(zoneId, bounds, latlng) {
+            zones.forEach(z => {
+                z.polygon.setStyle({
+                    fillColor: '#ffffff',
+                    fillOpacity: 0.05
+                });
+            });
+
+            zones.find(z => z.id === zoneId).polygon.setStyle({
+                fillColor: '#c31432',
+                fillOpacity: 0.5
+            });
+
+            selectedZone = zoneId;
+            document.getElementById('zoneName').value = zoneId;
+
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+            }
+
+            currentMarker = L.marker(latlng, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: '<div style="background: #c31432; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [20, 20]
+                })
+            }).addTo(map);
+
+            showPreviousComments(zoneId);
+        }
+
+        let feedbackData = JSON.parse(localStorage.getItem('feedbackData') || '[]');
+
+        function showPreviousComments(zoneId) {
+            const zoneComments = feedbackData.filter(f => f.zone === zoneId);
+            const commentsSection = document.getElementById('previousComments');
+            const commentsList = document.getElementById('commentsList');
+
+            if (zoneComments.length === 0) {
+                commentsSection.style.display = 'none';
+                return;
+            }
+
+            commentsSection.style.display = 'block';
+            commentsList.innerHTML = zoneComments.map(comment => `
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <div class="comment-date">📅 ${comment.date}</div>
+                        <div class="comment-theme">${comment.theme}</div>
+                    </div>
+                    <div class="comment-text">${comment.comment}</div>
+                    ${comment.photos.length > 0 ? `
+                        <div class="comment-photos">
+                            ${comment.photos.map(photo => `
+                                <img src="${photo}" alt="Photo" onclick="showImageModal('${photo}')">
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        let selectedPhotos = [];
+
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            
+            if (selectedPhotos.length + files.length > 3) {
+                showAlert('Vous ne pouvez ajouter que 3 photos maximum', 'error');
+                return;
+            }
+
+            files.forEach(file => {
+                if (selectedPhotos.length < 3) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        selectedPhotos.push({
+                            file: file,
+                            dataUrl: event.target.result
+                        });
+                        updatePhotoPreview();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        function updatePhotoPreview() {
+            const preview = document.getElementById('photoPreview');
+            preview.innerHTML = '';
+
+            selectedPhotos.forEach((photo, index) => {
+                const photoItem = document.createElement('div');
+                photoItem.className = 'photo-item';
+                photoItem.innerHTML = `
+                    <img src="${photo.dataUrl}" alt="Photo ${index + 1}" onclick="showImageModal('${photo.dataUrl}')">
+                    <button class="remove-btn" onclick="removePhoto(${index})" type="button">×</button>
+                `;
+                preview.appendChild(photoItem);
+            });
+        }
+
+        function removePhoto(index) {
+            selectedPhotos.splice(index, 1);
+            updatePhotoPreview();
+        }
+
+        function showImageModal(imageSrc) {
+            document.getElementById('modalImage').src = imageSrc;
+            document.getElementById('imageModal').classList.add('active');
+        }
+
+        document.getElementById('comment').addEventListener('input', function() {
+            const counter = document.getElementById('charCounter');
+            const length = this.value.length;
+            counter.textContent = `${length} / 1000 caractères`;
+            
+            if (length > 900) {
+                counter.classList.add('warning');
+            } else {
+                counter.classList.remove('warning');
+            }
+        });
+
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const zoneId = document.getElementById('zoneName').value;
+            const comment = document.getElementById('comment').value;
+            const theme = document.querySelector('input[name="theme"]:checked');
+
+            if (!zoneId) {
+                showAlert('Veuillez sélectionner une zone sur la carte', 'error');
+                return;
+            }
+
+            if (!theme) {
+                showAlert('Veuillez sélectionner un type de mobilier urbain', 'error');
+                return;
+            }
+
+            const feedback = {
+                id: Date.now(),
+                zone: zoneId,
+                theme: theme.value,
+                date: new Date().toLocaleString('fr-FR'),
+                comment: comment,
+                photos: selectedPhotos.map(p => p.dataUrl)
+            };
+
+            feedbackData.push(feedback);
+            localStorage.setItem('feedbackData', JSON.stringify(feedbackData));
+
+            // Ajouter 1 point
+            userPoints++;
+            localStorage.setItem('userPoints', userPoints.toString());
+            document.getElementById('userPoints').textContent = userPoints;
+
+            showAlert('✅ Contribution enregistrée avec succès ! +1 point 🏆', 'success');
+            
+            document.getElementById('feedbackForm').reset();
+            selectedPhotos = [];
+            updatePhotoPreview();
+
+            showPreviousComments(zoneId);
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
