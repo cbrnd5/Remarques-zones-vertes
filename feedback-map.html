@@ -325,6 +325,25 @@
             box-shadow: 0 6px 25px rgba(0,0,0,0.4);
         }
 
+        /* Map-only quick link (aligned with admin link) */
+        .map-link {
+            position: fixed;
+            bottom: 30px;
+            right: 110px; /* to the left of admin link */
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 6px 14px rgba(195, 20, 50, 0.28);
+            transition: transform 0.15s;
+            z-index: 1000;
+        }
+
+        .map-link:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(195, 20, 50, 0.4); }
+
         .alert-container {
             position: fixed;
             top: 20px;
@@ -626,6 +645,7 @@
         </div>
     </div>
 
+    <a href="map-only.html" class="map-link">🗺️ Carte (filtrer)</a>
     <a href="index.html" class="admin-link">📊 Tableau récapitulatif</a>
 
     <div id="alertContainer" class="alert-container"></div>
@@ -862,191 +882,10 @@
             showAlert('✅ Contribution enregistrée avec succès ! +1 point 🏆', 'success'); document.getElementById('feedbackForm').reset(); selectedPhotos = []; updatePhotoPreview(); showPreviousComments(zoneId);
         });
 
-        function showAlert(message, type) { const alertContainer = document.getElementById('alertContainer'); const alert = document.createElement('div'); alert.className = `alert alert-${type}`; alert.textContent = message; alertContainer.appendChild(alert); setTimeout(() => { alert.remove(); }, 5000); }
-    </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDH7Dnfyxt9no0sewA_Z2GL_1UZz-oiOo&callback=initMap"></script>
+    
 
-        // Fonction pour vérifier si un point est à l'intérieur du polygone (Ray Casting Algorithm)
-        function isPointInPolygon(point, polygon) {
-            const x = point[0], y = point[1];
-            let inside = false;
-            
-            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                const xi = polygon[i][0], yi = polygon[i][1];
-                const xj = polygon[j][0], yj = polygon[j][1];
-                
-                const intersect = ((yi > y) !== (yj > y))
-                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-                if (intersect) inside = !inside;
-            }
-            
-            return inside;
-        }
 
-        // Fonction pour vérifier si un rectangle intersecte le polygone
-        function rectangleIntersectsPolygon(rectBounds, polygon) {
-            // Vérifier si au moins un coin du rectangle est dans le polygone
-            const corners = [
-                [rectBounds[0][0], rectBounds[0][1]], // SW
-                [rectBounds[1][0], rectBounds[1][1]], // SE
-                [rectBounds[2][0], rectBounds[2][1]], // NE
-                [rectBounds[3][0], rectBounds[3][1]]  // NW
-            ];
-            
-            for (let corner of corners) {
-                if (isPointInPolygon(corner, polygon)) {
-                    return true;
-                }
-            }
-            
-            // Vérifier si le centre est dans le polygone
-            const centerLat = (rectBounds[0][0] + rectBounds[2][0]) / 2;
-            const centerLng = (rectBounds[0][1] + rectBounds[2][1]) / 2;
-            if (isPointInPolygon([centerLat, centerLng], polygon)) {
-                return true;
-            }
-            
-            return false;
-        }
 
-        // Zones are created in the Google Maps initialization (initMap) using the MEL boundary grid.
-        // The Leaflet-based zone code was removed to avoid conflicts; zone creation now happens in initMap.
-
-        let feedbackData = JSON.parse(localStorage.getItem('feedbackData') || '[]');
-
-        function showPreviousComments(zoneId) {
-            const zoneComments = feedbackData.filter(f => f.zone === zoneId);
-            const commentsSection = document.getElementById('previousComments');
-            const commentsList = document.getElementById('commentsList');
-
-            if (zoneComments.length === 0) {
-                commentsSection.style.display = 'none';
-                return;
-            }
-
-            commentsSection.style.display = 'block';
-            commentsList.innerHTML = zoneComments.map(comment => `
-                <div class="comment-item">
-                    <div class="comment-header">
-                        <div class="comment-date">📅 ${comment.date}</div>
-                        <div class="comment-theme">${comment.theme}</div>
-                    </div>
-                    <div class="comment-text">${comment.comment}</div>
-                    ${comment.photos.length > 0 ? `
-                        <div class="comment-photos">
-                            ${comment.photos.map(photo => `
-                                <img src="${photo}" alt="Photo" onclick="showImageModal('${photo}')">
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
-        }
-
-        let selectedPhotos = [];
-
-        document.getElementById('photoInput').addEventListener('change', function(e) {
-            const files = Array.from(e.target.files);
-            
-            if (selectedPhotos.length + files.length > 3) {
-                showAlert('Vous ne pouvez ajouter que 3 photos maximum', 'error');
-                return;
-            }
-
-            files.forEach(file => {
-                if (selectedPhotos.length < 3) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        selectedPhotos.push({
-                            file: file,
-                            dataUrl: event.target.result
-                        });
-                        updatePhotoPreview();
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        });
-
-        function updatePhotoPreview() {
-            const preview = document.getElementById('photoPreview');
-            preview.innerHTML = '';
-
-            selectedPhotos.forEach((photo, index) => {
-                const photoItem = document.createElement('div');
-                photoItem.className = 'photo-item';
-                photoItem.innerHTML = `
-                    <img src="${photo.dataUrl}" alt="Photo ${index + 1}" onclick="showImageModal('${photo.dataUrl}')">
-                    <button class="remove-btn" onclick="removePhoto(${index})" type="button">×</button>
-                `;
-                preview.appendChild(photoItem);
-            });
-        }
-
-        function removePhoto(index) {
-            selectedPhotos.splice(index, 1);
-            updatePhotoPreview();
-        }
-
-        function showImageModal(imageSrc) {
-            document.getElementById('modalImage').src = imageSrc;
-            document.getElementById('imageModal').classList.add('active');
-        }
-
-        document.getElementById('comment').addEventListener('input', function() {
-            const counter = document.getElementById('charCounter');
-            const length = this.value.length;
-            counter.textContent = `${length} / 1000 caractères`;
-            
-            if (length > 900) {
-                counter.classList.add('warning');
-            } else {
-                counter.classList.remove('warning');
-            }
-        });
-
-        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const zoneId = document.getElementById('zoneName').value;
-            const comment = document.getElementById('comment').value;
-            const theme = document.querySelector('input[name="theme"]:checked');
-
-            if (!zoneId) {
-                showAlert('Veuillez sélectionner une zone sur la carte', 'error');
-                return;
-            }
-
-            if (!theme) {
-                showAlert('Veuillez sélectionner un type de mobilier urbain', 'error');
-                return;
-            }
-
-            const feedback = {
-                id: Date.now(),
-                zone: zoneId,
-                theme: theme.value,
-                date: new Date().toLocaleString('fr-FR'),
-                comment: comment,
-                photos: selectedPhotos.map(p => p.dataUrl)
-            };
-
-            feedbackData.push(feedback);
-            localStorage.setItem('feedbackData', JSON.stringify(feedbackData));
-
-            // Ajouter 1 point
-            userPoints++;
-            localStorage.setItem('userPoints', userPoints.toString());
-            document.getElementById('userPoints').textContent = userPoints;
-
-            showAlert('✅ Contribution enregistrée avec succès ! +1 point 🏆', 'success');
-            
-            document.getElementById('feedbackForm').reset();
-            selectedPhotos = [];
-            updatePhotoPreview();
-
-            showPreviousComments(zoneId);
-        });
 
         function showAlert(message, type) {
             const alertContainer = document.getElementById('alertContainer');
@@ -1060,5 +899,6 @@
             }, 5000);
         }
     </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDH7Dnfyxt9no0sewA_Z2GL_1UZz-oiOo&callback=initMap"></script>
 </body>
 </html>
