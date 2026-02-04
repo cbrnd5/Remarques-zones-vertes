@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Carte - Filtrer par type</title>
+    <style>
+        html,body{height:100%;margin:0;font-family:Segoe UI,Arial,sans-serif}
+        #topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#fff;border-bottom:2px solid #eee}
+        #controls{margin-left:auto;display:flex;gap:8px;align-items:center}
+        #map{height:calc(100% - 56px)}
+        .btn{background:#c31432;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
+        .select{padding:8px;border-radius:6px;border:1px solid #ccc}
+        #mapsError{position:absolute;left:16px;right:16px;top:76px;padding:12px;background:#fff7f7;border:2px solid #c31432;border-radius:8px;z-index:9999;color:#8b0a1a;display:none}
+        #legend{position:absolute;left:16px;bottom:16px;padding:8px 12px;background:white;border-radius:8px;border:1px solid #eee;box-shadow:0 6px 20px rgba(0,0,0,0.08)}
+        .index-link { position: fixed; bottom: 18px; right: 18px; background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%); color: white; padding: 8px 12px; border-radius: 30px; font-size: 0.95rem; text-decoration: none; font-weight: 600; box-shadow: 0 6px 14px rgba(195, 20, 50, 0.28); z-index: 1000; } .index-link:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(195, 20, 50, 0.4); }
+    </style>
+</head>
+<body>
+    <div id="topbar">
+        <strong>Carte — Afficher les contributions</strong>
+        <div id="controls">
+            <label for="themeSelect">Afficher:</label>
+            <select id="themeSelect" class="select">
+                <option value="">Toutes les contributions</option>
+            </select>
+            <button id="refreshBtn" class="btn">🔄 Rafraîchir</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+    <div id="mapsError"></div>
+    <a href="index.html" class="index-link">📊 Tableau</a>
+
+    <script>
+        // Dynamic Google Maps loader with diagnostics (same approach as feedback-map.html)
+        (function(){
+            function createErrorBox() {
+                let box = document.getElementById('mapsError');
+                if (box) return box;
+                box = document.createElement('div');
+                box.id = 'mapsError';
+                document.body.appendChild(box);
+                return box;
+            }
+
+            function showMapsError(html) {
+                const box = createErrorBox();
+                box.innerHTML = html;
+                box.style.display = 'block';
+            }
+
+            window.gm_authFailure = function() {
+                showMapsError('<strong>Google Maps failed to load (authentication error).</strong><br>Vérifiez la clé API et les restrictions de référent.');
+            };
+
+            function loadGoogleMaps() {
+                const src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCDH7Dnfyxt9no0sewA_Z2GL_1UZz-oiOo&callback=initMap';
+                const s = document.createElement('script');
+                s.src = src; s.async = true; s.defer = true;
+                s.onerror = function() { showMapsError('<strong>Impossible de charger Google Maps.</strong>'); };
+                document.head.appendChild(s);
+                setTimeout(function(){ if (!window.google || !window.google.maps) showMapsError('<strong>Google Maps did not initialize.</strong>'); }, 3500);
+            }
+            if (document.readyState === 'complete' || document.readyState === 'interactive') loadGoogleMaps();
+            else document.addEventListener('DOMContentLoaded', loadGoogleMaps);
+        })();
+
+        // Map-specific code
+        let map;
+        const MARKER_SIZE = 24;
+        const MARKER_VISIBLE_ZOOM = 12;
+        let mapMarkers = [];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: {lat:50.6292, lng:3.0573}, zoom: 11, mapTypeId: 'roadmap'
+            });
+
+            map.addListener('zoom_changed', () => {
+                const z = map.getZoom();
+                mapMarkers.forEach(m => m.setVisible(z >= MARKER_VISIBLE_ZOOM));
+            });
+
+            // Populate controls from storage and draw markers
+            populateThemeSelect();
+            drawMarkers();
+
+            document.getElementById('themeSelect').addEventListener('change', drawMarkers);
+            document.getElementById('refreshBtn').addEventListener('click', () => { loadFromStorage(); populateThemeSelect(); drawMarkers(); });
+        }
+
+        function loadFromStorage() {
+            try { return JSON.parse(localStorage.getItem('feedbackData') || '[]'); } catch(e) { return []; }
+        }
+
+        function populateThemeSelect() {
+            const sel = document.getElementById('themeSelect');
+            sel.innerHTML = '<option value="">Toutes les contributions</option>';
+            const data = loadFromStorage();
+            const themes = Array.from(new Set(data.map(f => (f.theme || '').toString().trim()).filter(t => t))).sort();
+            themes.forEach(t => { const opt = document.createElement('option'); opt.value = t; opt.textContent = t; sel.appendChild(opt); });
+        }
+
+        function createLabelMarker(theme, position) {
+            const label = String(theme).replace(/</g,'').replace(/>/g,'');
+            const initial = label ? label.charAt(0).toUpperCase() : '';
+            const size = MARKER_SIZE;
+            const svg = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'><circle cx='${size/2}' cy='${size/2}' r='${Math.floor(size/2)-2}' fill='#c31432' /><text x='${size/2}' y='${size/2+4}' font-family='Segoe UI, Arial, sans-serif' font-size='12' fill='white' text-anchor='middle'>${initial}</text></svg>`;
+            const url = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+            return new google.maps.Marker({position: position, map: map, title: label, visible: map.getZoom ? (map.getZoom() >= MARKER_VISIBLE_ZOOM) : false, optimized: false, icon: {url: url, scaledSize: new google.maps.Size(size,size), anchor: new google.maps.Point(Math.round(size/2), size)}});
+        }
+
+        function drawMarkers() {
+            const data = loadFromStorage();
+            const theme = (document.getElementById('themeSelect').value || '').toString().trim();
+            // Clear existing
+            mapMarkers.forEach(m => m.setMap(null)); mapMarkers = [];
+            const filtered = data.filter(f => f.coords && typeof f.coords.lat === 'number' && typeof f.coords.lng === 'number' && (!theme || (f.theme || '') === theme));
+            if (filtered.length === 0) {
+                // Center map to MEL by default
+                map.setCenter({lat:50.6292, lng:3.0573}); map.setZoom(11);
+            } else {
+                const bounds = new google.maps.LatLngBounds();
+                filtered.forEach(f => { const pos = new google.maps.LatLng(f.coords.lat, f.coords.lng); const m = createLabelMarker(f.theme, pos); mapMarkers.push(m); bounds.extend(pos); m.addListener('click', () => { new google.maps.InfoWindow({content:`<div style="min-width:160px"><strong>${f.theme}</strong><div>${f.comment ? f.comment.substring(0,200) : ''}</div></div>`}).open(map, m); }); });
+                if (filtered.length === 1) map.setCenter(bounds.getCenter()); else map.fitBounds(bounds);
+            }
+        }
+    </script>
+</body>
+</html>
