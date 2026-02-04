@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plateforme de Recensement - MEL & Centrale Lille</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Using Google Maps JavaScript API for the interactive map; Leaflet styles removed -->
     <style>
         * {
             margin: 0;
@@ -485,11 +485,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
         }
 
-        .leaflet-tooltip-left.zone-tooltip::before,
-        .leaflet-tooltip-right.zone-tooltip::before {
-            border-left-color: #c31432 !important;
-            border-right-color: #c31432 !important;
-        }
+        /* Leaflet-specific tooltip arrow rules removed; Google Maps uses its own UI */
     </style>
 </head>
 <body>
@@ -641,50 +637,234 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // Points système
         let userPoints = parseInt(localStorage.getItem('userPoints') || '0');
         document.getElementById('userPoints').textContent = userPoints;
 
-        // Initialisation de la carte
-        const map = L.map('map').setView([50.71, 3.0], 11);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
-
-        // Coordonnées du polygone de la zone d'étude
-        const studyAreaCoords = [
-            [50.76, 3.14],
-            [50.76, 3.18],
-            [50.80, 3.13],
-            [50.78, 2.99],
-            [50.70, 2.86],
-            [50.69, 2.82],
-            [50.65, 2.80],
-            [50.69, 2.99],
-            [50.70, 2.99],
-            [50.65, 3.05],
-            [50.63, 3.02],
-            [50.63, 3.05],
-            [50.65, 3.08],
-            [50.71, 3.05],
-            [50.72, 2.98],
-            [50.75, 3.12],
-            [50.76, 3.14]
+        // MEL boundary (as used in the previously working file)
+        const melBoundary = [
+            {lat:50.735, lng:2.920}, {lat:50.735, lng:3.000}, {lat:50.710, lng:3.080}, {lat:50.690, lng:3.185},
+            {lat:50.650, lng:3.210}, {lat:50.615, lng:3.180}, {lat:50.585, lng:3.145}, {lat:50.560, lng:3.095},
+            {lat:50.545, lng:3.040}, {lat:50.540, lng:2.995}, {lat:50.545, lng:2.950}, {lat:50.565, lng:2.915},
+            {lat:50.620, lng:2.890}, {lat:50.680, lng:2.880}, {lat:50.715, lng:2.895}, {lat:50.735, lng:2.920}
         ];
 
-        // Afficher le périmètre de la zone d'étude
-        const studyAreaLayer = L.polygon(studyAreaCoords, {
-            color: '#c31432',
-            fillColor: '#c31432',
-            fillOpacity: 0.1,
-            weight: 3
-        }).addTo(map);
+        // Grid and marker settings
+        const gridRows = 10;
+        const gridCols = 20;
+        const MARKER_VISIBLE_ZOOM = 15;
+        const MARKER_SIZE = 24;
 
-        // Centrer la carte sur la zone
-        map.fitBounds(studyAreaLayer.getBounds());
+        let map;
+        let zones = [];
+        let selectedZone = null;
+        let currentMarker = null;
+        let feedbackData = JSON.parse(localStorage.getItem('feedbackData') || '[]');
+        let mapMarkers = [];
+        let selectedPhotos = [];
+
+        // Geometry helpers
+        function isPointInPolygon(point, polygon) {
+            const x = point[0], y = point[1];
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+                const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function rectangleIntersectsPolygon(rectBounds, polygon) {
+            const corners = [
+                [rectBounds[0][0], rectBounds[0][1]],
+                [rectBounds[1][0], rectBounds[1][1]],
+                [rectBounds[2][0], rectBounds[2][1]],
+                [rectBounds[3][0], rectBounds[3][1]]
+            ];
+            for (let corner of corners) if (isPointInPolygon(corner, polygon)) return true;
+            const centerLat = (rectBounds[0][0] + rectBounds[2][0]) / 2;
+            const centerLng = (rectBounds[0][1] + rectBounds[2][1]) / 2;
+            if (isPointInPolygon([centerLat, centerLng], polygon)) return true;
+            return false;
+        }
+
+        // Map initialization
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: {lat:50.6292, lng:3.0573},
+                zoom: 11,
+                mapTypeId: 'roadmap',
+                gestureHandling: 'greedy'
+            });
+
+            const melZone = new google.maps.Polygon({
+                paths: melBoundary,
+                strokeColor: '#c31432',
+                strokeOpacity: 1,
+                strokeWeight: 3,
+                fillColor: '#c31432',
+                fillOpacity: 0.15,
+                clickable: false,
+                map: map
+            });
+
+            const boundsObj = new google.maps.LatLngBounds();
+            melBoundary.forEach(pt => boundsObj.extend(pt));
+            map.fitBounds(boundsObj);
+
+            map.addListener('zoom_changed', function() {
+                const z = map.getZoom();
+                mapMarkers.forEach(m => m.setVisible(z >= MARKER_VISIBLE_ZOOM));
+            });
+
+            // Compute grid over MEL bounding box
+            const lats = melBoundary.map(p => p.lat);
+            const lngs = melBoundary.map(p => p.lng);
+            const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+            const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+            const latStep = (maxLat - minLat) / gridRows;
+            const lngStep = (maxLng - minLng) / gridCols;
+
+            let zoneNumber = 1;
+            for (let row = 0; row < gridRows; row++) {
+                for (let col = 0; col < gridCols; col++) {
+                    const zoneCoords = [
+                        {lat: minLat + (row * latStep), lng: minLng + (col * lngStep)},
+                        {lat: minLat + (row * latStep), lng: minLng + ((col + 1) * lngStep)},
+                        {lat: minLat + ((row + 1) * latStep), lng: minLng + ((col + 1) * lngStep)},
+                        {lat: minLat + ((row + 1) * latStep), lng: minLng + (col * lngStep)}
+                    ];
+
+                    const zoneId = `Zone ${zoneNumber.toString().padStart(3, '0')}`;
+
+                    const zonePolygon = new google.maps.Polygon({
+                        paths: zoneCoords,
+                        strokeColor: '#c31432',
+                        strokeOpacity: 0.3,
+                        strokeWeight: 0.5,
+                        fillColor: '#ffffff',
+                        fillOpacity: 0.05,
+                        clickable: true,
+                        zIndex: 2,
+                        map: map
+                    });
+
+                    zonePolygon.zoneId = zoneId;
+                    zonePolygon.zoneBounds = zoneCoords;
+
+                    zonePolygon.addListener('click', function(e) {
+                        selectZone(this.zoneId, this.zoneBounds, e.latLng);
+                    });
+
+                    zonePolygon.addListener('mouseover', function() {
+                        if (this.zoneId !== selectedZone) this.setOptions({fillColor: '#c31432', fillOpacity: 0.2});
+                        if (map && map.getDiv) map.getDiv().style.cursor = 'pointer';
+                    });
+
+                    zonePolygon.addListener('mouseout', function() {
+                        if (this.zoneId !== selectedZone) this.setOptions({fillColor: '#ffffff', fillOpacity: 0.05});
+                        if (map && map.getDiv) map.getDiv().style.cursor = '';
+                    });
+
+                    zones.push({id: zoneId, polygon: zonePolygon, bounds: zoneCoords});
+                    zoneNumber++;
+                }
+            }
+
+            // Map click fallback
+            map.addListener('click', function(e) {
+                const lat = e.latLng.lat(); const lng = e.latLng.lng();
+                for (let z of zones) {
+                    const bounds = z.bounds;
+                    const minLatZ = Math.min(...bounds.map(p => p.lat));
+                    const maxLatZ = Math.max(...bounds.map(p => p.lat));
+                    const minLngZ = Math.min(...bounds.map(p => p.lng));
+                    const maxLngZ = Math.max(...bounds.map(p => p.lng));
+                    if (lat >= minLatZ && lat <= maxLatZ && lng >= minLngZ && lng <= maxLngZ) {
+                        selectZone(z.id, z.bounds, e.latLng); return;
+                    }
+                }
+            });
+
+            // draw markers from storage
+            drawExistingMarkers();
+        }
+
+        function selectZone(zoneId, bounds, latlng) {
+            zones.forEach(z => z.polygon.setOptions({fillColor: '#ffffff', fillOpacity: 0.05}));
+            const found = zones.find(z => z.id === zoneId);
+            if (found) found.polygon.setOptions({fillColor: '#c31432', fillOpacity: 0.5});
+            selectedZone = zoneId;
+            document.getElementById('zoneName').value = zoneId;
+
+            if (currentMarker) currentMarker.setMap(null);
+            currentMarker = new google.maps.Marker({position: latlng, map: map, icon: {path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#c31432', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 3}});
+
+            showPreviousComments(zoneId);
+        }
+
+        function createLabelMarker(theme, position) {
+            const label = String(theme).replace(/</g, '').replace(/>/g, '');
+            const initial = label ? label.charAt(0).toUpperCase() : '';
+            const size = MARKER_SIZE;
+            const svg = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>\n                <circle cx='${size/2}' cy='${size/2}' r='${Math.floor(size/2)-2}' fill='#c31432' />\n                <text x='${size/2}' y='${size/2+4}' font-family='Segoe UI, Arial, sans-serif' font-size='12' fill='white' text-anchor='middle'>${initial}</text>\n            </svg>`;
+            const url = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+            const marker = new google.maps.Marker({position: position, map: map, title: label, visible: map.getZoom ? (map.getZoom() >= MARKER_VISIBLE_ZOOM) : false, optimized: false, icon: {url: url, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(Math.round(size/2), size)}});
+            return marker;
+        }
+
+        function drawExistingMarkers() {
+            if (!map) return;
+            mapMarkers.forEach(m => m.setMap(null)); mapMarkers = [];
+            feedbackData.forEach(f => {
+                if (f.coords && typeof f.coords.lat === 'number' && typeof f.coords.lng === 'number') {
+                    const pos = new google.maps.LatLng(f.coords.lat, f.coords.lng);
+                    const m = createLabelMarker(f.theme, pos); mapMarkers.push(m);
+                }
+            });
+        }
+
+        function showPreviousComments(zoneId) {
+            const zoneComments = feedbackData.filter(f => f.zone === zoneId);
+            const commentsSection = document.getElementById('previousComments');
+            const commentsList = document.getElementById('commentsList');
+            if (zoneComments.length === 0) { commentsSection.style.display = 'none'; return; }
+            commentsSection.style.display = 'block';
+            commentsList.innerHTML = zoneComments.map(comment => `\n                <div class="comment-item">\n                    <div class="comment-header">\n                        <div class="comment-date">📅 ${comment.date}</div>\n                        <div class="comment-theme">${comment.theme}</div>\n                    </div>\n                    <div class="comment-text">${comment.comment}</div>\n                    ${comment.photos.length > 0 ? `\n                        <div class="comment-photos">\n                            ${comment.photos.map(photo => `\n                                <img src="${photo}" alt="Photo" onclick="showImageModal('${photo}')">\n                            `).join('')}\n                        </div>\n                    ` : ''}\n                </div>\n            `).join('');
+        }
+
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (selectedPhotos.length + files.length > 3) { showAlert('Vous ne pouvez ajouter que 3 photos maximum', 'error'); return; }
+            files.forEach(file => { if (selectedPhotos.length < 3) { const reader = new FileReader(); reader.onload = function(event) { selectedPhotos.push({ file: file, dataUrl: event.target.result }); updatePhotoPreview(); }; reader.readAsDataURL(file); } });
+        });
+
+        function updatePhotoPreview() { const preview = document.getElementById('photoPreview'); preview.innerHTML = ''; selectedPhotos.forEach((photo, index) => { const photoItem = document.createElement('div'); photoItem.className = 'photo-item'; photoItem.innerHTML = `\n                    <img src="${photo.dataUrl}" alt="Photo ${index + 1}" onclick="showImageModal('${photo.dataUrl}')">\n                    <button class="remove-btn" onclick="removePhoto(${index})" type="button">×</button>\n                `; preview.appendChild(photoItem); }); }
+
+        function removePhoto(index) { selectedPhotos.splice(index, 1); updatePhotoPreview(); }
+        function showImageModal(imageSrc) { document.getElementById('modalImage').src = imageSrc; document.getElementById('imageModal').classList.add('active'); }
+
+        document.getElementById('comment').addEventListener('input', function() { const counter = document.getElementById('charCounter'); const length = this.value.length; counter.textContent = `${length} / 1000 caractères`; if (length > 900) { counter.classList.add('warning'); } else { counter.classList.remove('warning'); } });
+
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const zoneId = document.getElementById('zoneName').value; const comment = document.getElementById('comment').value; const theme = document.querySelector('input[name="theme"]:checked');
+            if (!zoneId) { showAlert('Veuillez sélectionner une zone sur la carte', 'error'); return; }
+            if (!theme) { showAlert('Veuillez sélectionner un type de mobilier urbain', 'error'); return; }
+            const coords = currentMarker && currentMarker.getPosition ? currentMarker.getPosition().toJSON() : null;
+            const feedback = { id: Date.now(), zone: zoneId, theme: theme.value, date: new Date().toLocaleString('fr-FR'), comment: comment, photos: selectedPhotos.map(p => p.dataUrl), coords: coords };
+            feedbackData.push(feedback); localStorage.setItem('feedbackData', JSON.stringify(feedbackData));
+            userPoints++; localStorage.setItem('userPoints', userPoints.toString()); document.getElementById('userPoints').textContent = userPoints;
+            if (coords) { const m = createLabelMarker(theme.value, new google.maps.LatLng(coords.lat, coords.lng)); mapMarkers.push(m); }
+            showAlert('✅ Contribution enregistrée avec succès ! +1 point 🏆', 'success'); document.getElementById('feedbackForm').reset(); selectedPhotos = []; updatePhotoPreview(); showPreviousComments(zoneId);
+        });
+
+        function showAlert(message, type) { const alertContainer = document.getElementById('alertContainer'); const alert = document.createElement('div'); alert.className = `alert alert-${type}`; alert.textContent = message; alertContainer.appendChild(alert); setTimeout(() => { alert.remove(); }, 5000); }
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDH7Dnfyxt9no0sewA_Z2GL_1UZz-oiOo&callback=initMap"></script>
 
         // Fonction pour vérifier si un point est à l'intérieur du polygone (Ray Casting Algorithm)
         function isPointInPolygon(point, polygon) {
@@ -729,120 +909,8 @@
             return false;
         }
 
-        // Créer environ 1000 zones (grille 32x32)
-        const gridRows = 32;
-        const gridCols = 32;
-        let zones = [];
-        let selectedZone = null;
-        let currentMarker = null;
-
-        const bounds = studyAreaLayer.getBounds();
-        const minLat = bounds.getSouth();
-        const maxLat = bounds.getNorth();
-        const minLng = bounds.getWest();
-        const maxLng = bounds.getEast();
-
-        const latStep = (maxLat - minLat) / gridRows;
-        const lngStep = (maxLng - minLng) / gridCols;
-
-        let zoneNumber = 1;
-
-        // Créer les zones en grille
-        for (let row = 0; row < gridRows; row++) {
-            for (let col = 0; col < gridCols; col++) {
-                const zoneBounds = [
-                    [minLat + (row * latStep), minLng + (col * lngStep)],           // SW
-                    [minLat + (row * latStep), minLng + ((col + 1) * lngStep)],     // SE
-                    [minLat + ((row + 1) * latStep), minLng + ((col + 1) * lngStep)], // NE
-                    [minLat + ((row + 1) * latStep), minLng + (col * lngStep)]      // NW
-                ];
-
-                // Vérifier si cette zone intersecte le polygone d'étude
-                if (rectangleIntersectsPolygon(zoneBounds, studyAreaCoords)) {
-                    const zoneId = `Zone ${zoneNumber.toString().padStart(4, '0')}`;
-                    
-                    const zoneRect = L.polygon(zoneBounds, {
-                        color: '#c31432',
-                        fillColor: '#ffffff',
-                        fillOpacity: 0.05,
-                        weight: 0.5,
-                        opacity: 0.3
-                    }).addTo(map);
-
-                    zoneRect.zoneId = zoneId;
-                    zoneRect.zoneBounds = zoneBounds;
-
-                    zoneRect.bindTooltip(zoneId, {
-                        permanent: false,
-                        direction: 'center',
-                        className: 'zone-tooltip'
-                    });
-
-                    zoneRect.on('click', function(e) {
-                        selectZone(this.zoneId, this.zoneBounds, e.latlng);
-                    });
-
-                    zoneRect.on('mouseover', function() {
-                        if (this.zoneId !== selectedZone) {
-                            this.setStyle({
-                                fillColor: '#c31432',
-                                fillOpacity: 0.2
-                            });
-                        }
-                    });
-
-                    zoneRect.on('mouseout', function() {
-                        if (this.zoneId !== selectedZone) {
-                            this.setStyle({
-                                fillColor: '#ffffff',
-                                fillOpacity: 0.05
-                            });
-                        }
-                    });
-
-                    zones.push({
-                        id: zoneId,
-                        polygon: zoneRect,
-                        bounds: zoneBounds
-                    });
-
-                    zoneNumber++;
-                }
-            }
-        }
-
-        console.log(`${zones.length} zones créées dans la zone d'étude`);
-
-        function selectZone(zoneId, bounds, latlng) {
-            zones.forEach(z => {
-                z.polygon.setStyle({
-                    fillColor: '#ffffff',
-                    fillOpacity: 0.05
-                });
-            });
-
-            zones.find(z => z.id === zoneId).polygon.setStyle({
-                fillColor: '#c31432',
-                fillOpacity: 0.5
-            });
-
-            selectedZone = zoneId;
-            document.getElementById('zoneName').value = zoneId;
-
-            if (currentMarker) {
-                map.removeLayer(currentMarker);
-            }
-
-            currentMarker = L.marker(latlng, {
-                icon: L.divIcon({
-                    className: 'custom-marker',
-                    html: '<div style="background: #c31432; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
-                    iconSize: [20, 20]
-                })
-            }).addTo(map);
-
-            showPreviousComments(zoneId);
-        }
+        // Zones are created in the Google Maps initialization (initMap) using the MEL boundary grid.
+        // The Leaflet-based zone code was removed to avoid conflicts; zone creation now happens in initMap.
 
         let feedbackData = JSON.parse(localStorage.getItem('feedbackData') || '[]');
 
