@@ -653,7 +653,7 @@
         // Grid and marker settings
         const gridRows = 10;
         const gridCols = 20;
-        const MARKER_VISIBLE_ZOOM = 12;
+        const MARKER_VISIBLE_ZOOM = 15;
         const MARKER_SIZE = 24;
 
         let map;
@@ -863,6 +863,54 @@
         });
 
         function showAlert(message, type) { const alertContainer = document.getElementById('alertContainer'); const alert = document.createElement('div'); alert.className = `alert alert-${type}`; alert.textContent = message; alertContainer.appendChild(alert); setTimeout(() => { alert.remove(); }, 5000); }
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCDH7Dnfyxt9no0sewA_Z2GL_1UZz-oiOo&callback=initMap"></script>
+
+        // Fonction pour vérifier si un point est à l'intérieur du polygone (Ray Casting Algorithm)
+        function isPointInPolygon(point, polygon) {
+            const x = point[0], y = point[1];
+            let inside = false;
+            
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+                
+                const intersect = ((yi > y) !== (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            
+            return inside;
+        }
+
+        // Fonction pour vérifier si un rectangle intersecte le polygone
+        function rectangleIntersectsPolygon(rectBounds, polygon) {
+            // Vérifier si au moins un coin du rectangle est dans le polygone
+            const corners = [
+                [rectBounds[0][0], rectBounds[0][1]], // SW
+                [rectBounds[1][0], rectBounds[1][1]], // SE
+                [rectBounds[2][0], rectBounds[2][1]], // NE
+                [rectBounds[3][0], rectBounds[3][1]]  // NW
+            ];
+            
+            for (let corner of corners) {
+                if (isPointInPolygon(corner, polygon)) {
+                    return true;
+                }
+            }
+            
+            // Vérifier si le centre est dans le polygone
+            const centerLat = (rectBounds[0][0] + rectBounds[2][0]) / 2;
+            const centerLng = (rectBounds[0][1] + rectBounds[2][1]) / 2;
+            if (isPointInPolygon([centerLat, centerLng], polygon)) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Zones are created in the Google Maps initialization (initMap) using the MEL boundary grid.
+        // The Leaflet-based zone code was removed to avoid conflicts; zone creation now happens in initMap.
 
         let feedbackData = JSON.parse(localStorage.getItem('feedbackData') || '[]');
 
