@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plateforme de Recensement - MEL & Centrale Lille</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            color: white;
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content {
+            flex: 1;
+        }
+
+        header h1 {
+            font-size: 2.2em;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            font-size: 1.05em;
+            opacity: 0.95;
+        }
+
+        .header-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 15px;
+        }
+
+        .logos {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .logo-item {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            color: #c31432;
+            font-size: 1.2em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .user-points {
+            background: rgba(255,255,255,0.2);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-points .points-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .user-points .points-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .map-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-right: 3px solid #c31432;
+        }
+
+        .map-section h2 {
+            color: #c31432;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .map-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #c31432;
+        }
+
+        .map-info strong {
+            color: #c31432;
+        }
+
+        #map {
+            height: 550px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 3px solid #c31432;
+        }
+
+        .form-section {
+            padding: 30px;
+        }
+
+        .form-section h2 {
+            color: #c31432;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #c31432;
+        }
+
+        .form-group select {
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: inherit;
+        }
+
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .theme-option {
+            position: relative;
+        }
+
+        .theme-option input[type="radio"] {
+            display: none;
+        }
+
+        .theme-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .theme-label .icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+
+        .theme-label .label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+        }
+
+        .theme-option input[type="radio"]:checked + .theme-label {
+            border-color: #c31432;
+            background: #fff5f5;
+            transform: scale(1.05);
+        }
+
+        .theme-label:hover {
+            border-color: #c31432;
+            background: #fff5f5;
+        }
+
+        .photo-upload {
+            border: 2px dashed #c31432;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #fff5f5;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .photo-upload:hover {
+            background: #ffe5e5;
+            border-color: #8b0a1a;
+        }
+
+        .photo-upload input {
+            display: none;
+        }
+
+        .photo-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .photo-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+
+        .photo-item .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #c31432;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .photo-item .remove-btn:hover {
+            background: #8b0a1a;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(195, 20, 50, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .char-counter {
+            text-align: right;
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .char-counter.warning {
+            color: #c31432;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+        }
+
+        .previous-comments {
+            background: #fff5f5;
+            border: 2px solid #c31432;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .previous-comments h3 {
+            color: #c31432;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .comment-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid #c31432;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .comment-date {
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .comment-theme {
+            background: #c31432;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .comment-text {
+            color: #333;
+            font-size: 0.95em;
+            margin-bottom: 8px;
+        }
+
+        .comment-photos {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .comment-photos img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .comment-photos img:hover {
+            transform: scale(1.1);
+        }
+
+        .admin-link {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 8px 20px rgba(195, 20, 50, 0.4);
+            transition: transform 0.2s;
+            z-index: 100;
+        }
+
+        .admin-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(195, 20, 50, 0.5);
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+        }
+
+        .popup-content h4 {
+            color: #c31432;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .map-section {
+                border-right: none;
+                border-bottom: 3px solid #c31432;
+            }
+
+            header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-right {
+                align-items: center;
+                margin-top: 15px;
+            }
+
+            .theme-selector {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>🏙️ Plateforme de Recensement du Mobilier Urbain</h1>
+                <p>Contribuez au recensement des équipements urbains de la métropole lilloise</p>
+            </div>
+            <div class="header-right">
+                <div class="logos">
+                    <div class="logo-item">MEL</div>
+                    <div class="logo-item">Centrale Lille</div>
+                </div>
+                <div class="user-points">
+                    <div>
+                        <div class="points-value" id="userPoints">0</div>
+                        <div class="points-label">points</div>
+                    </div>
+                    <span style="font-size: 2em;">🏆</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="map-section">
+                <h2>📍 Carte Interactive</h2>
+                <div class="map-info">
+                    <strong>Instructions :</strong> Cliquez sur une des 200 zones pour sélectionner et voir les contributions existantes. Chaque contribution vous rapporte 1 point !
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <div class="form-section">
+                <h2>✍️ Votre contribution</h2>
+                <div id="alertContainer"></div>
+
+                <div id="previousComments" class="previous-comments" style="display: none;">
+                    <h3>💬 Contributions précédentes dans cette zone</h3>
+                    <div id="commentsList"></div>
+                </div>
+                
+                <form id="feedbackForm">
+                    <div class="form-group">
+                        <label for="zoneName">Zone sélectionnée *</label>
+                        <input type="text" id="zoneName" readonly required placeholder="Cliquez sur la carte pour sélectionner une zone">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Type de mobilier urbain *</label>
+                        <div class="theme-selector">
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-banc" value="Banc" required>
+                                <label for="theme-banc" class="theme-label">
+                                    <span class="icon">🪑</span>
+                                    <span class="label">Banc</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-table" value="Table">
+                                <label for="theme-table" class="theme-label">
+                                    <span class="icon">🍽️</span>
+                                    <span class="label">Table</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-poteau" value="Poteau(x)">
+                                <label for="theme-poteau" class="theme-label">
+                                    <span class="icon">📍</span>
+                                    <span class="label">Poteau(x)</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-panneau" value="Panneau">
+                                <label for="theme-panneau" class="theme-label">
+                                    <span class="icon">🪧</span>
+                                    <span class="label">Panneau</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-pont" value="Pont">
+                                <label for="theme-pont" class="theme-label">
+                                    <span class="icon">🌉</span>
+                                    <span class="label">Pont</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-barriere" value="Barrière">
+                                <label for="theme-barriere" class="theme-label">
+                                    <span class="icon">🚧</span>
+                                    <span class="label">Barrière</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-escalier" value="Escalier">
+                                <label for="theme-escalier" class="theme-label">
+                                    <span class="icon">🪜</span>
+                                    <span class="label">Escalier</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-poubelle" value="Poubelle">
+                                <label for="theme-poubelle" class="theme-label">
+                                    <span class="icon">🗑️</span>
+                                    <span class="label">Poubelle</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-lampadaire" value="Lampadaire">
+                                <label for="theme-lampadaire" class="theme-label">
+                                    <span class="icon">💡</span>
+                                    <span class="label">Lampadaire</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-sport" value="Mobilier de sport">
+                                <label for="theme-sport" class="theme-label">
+                                    <span class="icon">⚽</span>
+                                    <span class="label">Mobilier de sport</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" name="theme" id="theme-autre" value="Autre">
+                                <label for="theme-autre" class="theme-label">
+                                    <span class="icon">❓</span>
+                                    <span class="label">Autre</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comment">Description * (max 1000 caractères)</label>
+                        <textarea id="comment" maxlength="1000" required placeholder="Décrivez le mobilier urbain recensé (état, localisation précise, remarques...)"></textarea>
+                        <div class="char-counter" id="charCounter">0 / 1000 caractères</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Photos (max 3)</label>
+                        <div class="photo-upload" onclick="document.getElementById('photoInput').click()">
+                            <p>📷 Cliquez pour ajouter des photos</p>
+                            <small>Format JPG, PNG - Max 3 photos</small>
+                            <input type="file" id="photoInput" accept="image/*" multiple>
+                        </div>
+                        <div class="photo-preview" id="photoPreview"></div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <span>Envoyer ma contribution</span>
+                        <span>+1 🏆</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <a href="admin.html" class="admin-link" target="_blank">📊 Voir le tableau récapitulatif</a>
+
+    <div class="modal" id="imageModal" onclick="this.classList.remove('active')">
+        <img id="modalImage" src="" alt="Image agrandie">
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialisation du système de points
+        let userPoints = parseInt(localStorage.getItem('userPoints') || '0');
+        document.getElementById('userPoints').textContent = userPoints;
+
+        // Initialisation de la carte centrée sur la métropole lilloise
+        const map = L.map('map').setView([50.6292, 3.0573], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Coordonnées du périmètre rouge de la carte MEL
+        const melBoundary = [
+            [50.735, 2.920], [50.735, 3.000], [50.710, 3.080], [50.690, 3.185],
+            [50.650, 3.210], [50.615, 3.180], [50.585, 3.145], [50.560, 3.095],
+            [50.545, 3.040], [50.540, 2.995], [50.545, 2.950], [50.565, 2.915],
+            [50.620, 2.890], [50.680, 2.880], [50.715, 2.895], [50.735, 2.920]
+        ];
+
+        const melZone = L.polygon(melBoundary, {
+            color: '#c31432',
+            fillColor: '#c31432',
+            fillOpacity: 0.15,
+            weight: 3
+        }).addTo(map);
+
+        map.fitBounds(melZone.getBounds());
+
+        // Créer 200 zones (grille 20x10)
+        const gridRows = 10;
+        const gridCols = 20;
+        let zones = [];
+        let selectedZone = null;
+        let currentMarker = null;
+
+        const bounds = melZone.getBounds();
+        const minLat = bounds.getSouth();
+        const maxLat = bounds.getNorth();
+        const minLng = bounds.getWest();
+        const maxLng = bounds.getEast();
+
+        const latStep = (maxLat - minLat) / gridRows;
+        const lngStep = (maxLng - minLng) / gridCols;
+
+        let zoneNumber = 1;
+
+        for (let row = 0; row < gridRows; row++) {
+            for (let col = 0; col < gridCols; col++) {
+                const zoneBounds = [
+                    [minLat + (row * latStep), minLng + (col * lngStep)],
+                    [minLat + (row * latStep), minLng + ((col + 1) * lngStep)],
+                    [minLat + ((row + 1) * latStep), minLng + ((col + 1) * lngStep)],
+                    [minLat + ((row + 1) * latStep), minLng + (col * lngStep)]
+                ];
+
+                const zoneId = `Zone ${zoneNumber.toString().padStart(3, '0')}`;
+                
+                const zoneRect = L.polygon(zoneBounds, {
+                    color: '#c31432',
+                    fillColor: '#ffffff',
+                    fillOpacity: 0.05,
+                    weight: 0.5,
+                    opacity: 0.3
+                }).addTo(map);
+
+                zoneRect.zoneId = zoneId;
+                zoneRect.zoneBounds = zoneBounds;
+
+                zoneRect.bindTooltip(zoneId, {
+                    permanent: false,
+                    direction: 'center',
+                    className: 'zone-tooltip'
+                });
+
+                zoneRect.on('click', function(e) {
+                    selectZone(this.zoneId, this.zoneBounds, e.latlng);
+                });
+
+                zoneRect.on('mouseover', function() {
+                    if (this.zoneId !== selectedZone) {
+                        this.setStyle({
+                            fillColor: '#c31432',
+                            fillOpacity: 0.2
+                        });
+                    }
+                });
+
+                zoneRect.on('mouseout', function() {
+                    if (this.zoneId !== selectedZone) {
+                        this.setStyle({
+                            fillColor: '#ffffff',
+                            fillOpacity: 0.05
+                        });
+                    }
+                });
+
+                zones.push({
+                    id: zoneId,
+                    polygon: zoneRect,
+                    bounds: zoneBounds
+                });
+
+                zoneNumber++;
+            }
+        }
+
+        function selectZone(zoneId, bounds, latlng) {
+            zones.forEach(z => {
+                z.polygon.setStyle({
+                    fillColor: '#ffffff',
+                    fillOpacity: 0.05
+                });
+            });
+
+            zones.find(z => z.id === zoneId).polygon.setStyle({
+                fillColor: '#c31432',
+                fillOpacity: 0.5
+            });
+
+            selectedZone = zoneId;
+            document.getElementById('zoneName').value = zoneId;
+
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+            }
+
+            currentMarker = L.marker(latlng, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: '<div style="background: #c31432; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [20, 20]
+                })
+            }).addTo(map);
+
+            showPreviousComments(zoneId);
+        }
+
+        let feedbackData = JSON.parse(localStorage.getItem('feedbackData') || '[]');
+
+        function showPreviousComments(zoneId) {
+            const zoneComments = feedbackData.filter(f => f.zone === zoneId);
+            const commentsSection = document.getElementById('previousComments');
+            const commentsList = document.getElementById('commentsList');
+
+            if (zoneComments.length === 0) {
+                commentsSection.style.display = 'none';
+                return;
+            }
+
+            commentsSection.style.display = 'block';
+            commentsList.innerHTML = zoneComments.map(comment => `
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <div class="comment-date">📅 ${comment.date}</div>
+                        <div class="comment-theme">${comment.theme}</div>
+                    </div>
+                    <div class="comment-text">${comment.comment}</div>
+                    ${comment.photos.length > 0 ? `
+                        <div class="comment-photos">
+                            ${comment.photos.map(photo => `
+                                <img src="${photo}" alt="Photo" onclick="showImageModal('${photo}')">
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        let selectedPhotos = [];
+
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            
+            if (selectedPhotos.length + files.length > 3) {
+                showAlert('Vous ne pouvez ajouter que 3 photos maximum', 'error');
+                return;
+            }
+
+            files.forEach(file => {
+                if (selectedPhotos.length < 3) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        selectedPhotos.push({
+                            file: file,
+                            dataUrl: event.target.result
+                        });
+                        updatePhotoPreview();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        function updatePhotoPreview() {
+            const preview = document.getElementById('photoPreview');
+            preview.innerHTML = '';
+
+            selectedPhotos.forEach((photo, index) => {
+                const photoItem = document.createElement('div');
+                photoItem.className = 'photo-item';
+                photoItem.innerHTML = `
+                    <img src="${photo.dataUrl}" alt="Photo ${index + 1}" onclick="showImageModal('${photo.dataUrl}')">
+                    <button class="remove-btn" onclick="removePhoto(${index})" type="button">×</button>
+                `;
+                preview.appendChild(photoItem);
+            });
+        }
+
+        function removePhoto(index) {
+            selectedPhotos.splice(index, 1);
+            updatePhotoPreview();
+        }
+
+        function showImageModal(imageSrc) {
+            document.getElementById('modalImage').src = imageSrc;
+            document.getElementById('imageModal').classList.add('active');
+        }
+
+        document.getElementById('comment').addEventListener('input', function() {
+            const counter = document.getElementById('charCounter');
+            const length = this.value.length;
+            counter.textContent = `${length} / 1000 caractères`;
+            
+            if (length > 900) {
+                counter.classList.add('warning');
+            } else {
+                counter.classList.remove('warning');
+            }
+        });
+
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const zoneId = document.getElementById('zoneName').value;
+            const comment = document.getElementById('comment').value;
+            const theme = document.querySelector('input[name="theme"]:checked');
+
+            if (!zoneId) {
+                showAlert('Veuillez sélectionner une zone sur la carte', 'error');
+                return;
+            }
+
+            if (!theme) {
+                showAlert('Veuillez sélectionner un type de mobilier urbain', 'error');
+                return;
+            }
+
+            const feedback = {
+                id: Date.now(),
+                zone: zoneId,
+                theme: theme.value,
+                date: new Date().toLocaleString('fr-FR'),
+                comment: comment,
+                photos: selectedPhotos.map(p => p.dataUrl)
+            };
+
+            feedbackData.push(feedback);
+            localStorage.setItem('feedbackData', JSON.stringify(feedbackData));
+
+            // Ajouter 1 point
+            userPoints++;
+            localStorage.setItem('userPoints', userPoints.toString());
+            document.getElementById('userPoints').textContent = userPoints;
+
+            showAlert('✅ Contribution enregistrée avec succès ! +1 point 🏆', 'success');
+            
+            document.getElementById('feedbackForm').reset();
+            selectedPhotos = [];
+            updatePhotoPreview();
+
+            showPreviousComments(zoneId);
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
