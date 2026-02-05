@@ -720,16 +720,8 @@
                 gestureHandling: 'greedy'
             });
 
-            const melZone = new google.maps.Polygon({
-                paths: melBoundary,
-                strokeColor: '#c31432',
-                strokeOpacity: 1,
-                strokeWeight: 3,
-                fillColor: '#c31432',
-                fillOpacity: 0.15,
-                clickable: false,
-                map: map
-            });
+            // MEL boundary polygon removed to avoid drawing the outer contour
+            // (previously created from `melBoundary`).
 
             const boundsObj = new google.maps.LatLngBounds();
             melBoundary.forEach(pt => boundsObj.extend(pt));
@@ -740,9 +732,79 @@
                 mapMarkers.forEach(m => m.setVisible(z >= MARKER_VISIBLE_ZOOM));
             });
 
-            // Compute grid over MEL bounding box
-            const lats = melBoundary.map(p => p.lat);
-            const lngs = melBoundary.map(p => p.lng);
+            // --- New: Use provided GeoJSON study zone to adapt the grid ---
+            const studyGeoJSON = {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "properties": {
+                            "nom": "Zone d'étude - Basse Deûle et Lys",
+                            "description": "Polygone basé sur tableau de vecteurs fourni"
+                        },
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [
+                                [
+                                    [3.14, 50.76],
+                                    [3.18, 50.76],
+                                    [3.13, 50.80],
+                                    [2.99, 50.78],
+                                    [2.86, 50.70],
+                                    [2.82, 50.69],
+                                    [2.80, 50.65],
+                                    [2.99, 50.69],
+                                    [2.99, 50.70],
+                                    [3.05, 50.65],
+                                    [3.02, 50.63],
+                                    [3.05, 50.63],
+                                    [3.08, 50.65],
+                                    [3.05, 50.71],
+                                    [2.98, 50.72],
+                                    [3.12, 50.75],
+                                    [3.14, 50.76]
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            // Convert GeoJSON polygon to array of {lat,lng} for drawing and checks
+            const studyCoords = studyGeoJSON.features[0].geometry.coordinates[0].map(c => ({lat: c[1], lng: c[0]}));
+
+            const studyPolygon = new google.maps.Polygon({
+                paths: studyCoords,
+                strokeColor: '#0055a5',
+                strokeOpacity: 0.9,
+                strokeWeight: 2,
+                fillColor: '#0055a5',
+                fillOpacity: 0.08,
+                clickable: false,
+                map: map
+            });
+            // Put study polygon above the MEL overlay and fit map to it
+            studyPolygon.setOptions({zIndex: 5, fillOpacity: 0.12});
+            const studyBounds = new google.maps.LatLngBounds();
+            studyCoords.forEach(pt => studyBounds.extend(pt));
+            map.fitBounds(studyBounds);
+
+            // Helper: point-in-polygon using lon/lat (ray-casting)
+            function pointInPolygon(lat, lng, polygonLatLngArray) {
+                const x = lng, y = lat;
+                let inside = false;
+                for (let i = 0, j = polygonLatLngArray.length - 1; i < polygonLatLngArray.length; j = i++) {
+                    const xi = polygonLatLngArray[i].lng, yi = polygonLatLngArray[i].lat;
+                    const xj = polygonLatLngArray[j].lng, yj = polygonLatLngArray[j].lat;
+                    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
+            }
+
+            // Compute grid over study bounding box (adapte le quadrillage à la zone d'étude)
+            const lats = studyCoords.map(p => p.lat);
+            const lngs = studyCoords.map(p => p.lng);
             const minLat = Math.min(...lats), maxLat = Math.max(...lats);
             const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
             const latStep = (maxLat - minLat) / gridRows;
@@ -751,13 +813,17 @@
             let zoneNumber = 1;
             for (let row = 0; row < gridRows; row++) {
                 for (let col = 0; col < gridCols; col++) {
-                    const zoneCoords = [
-                        {lat: minLat + (row * latStep), lng: minLng + (col * lngStep)},
-                        {lat: minLat + (row * latStep), lng: minLng + ((col + 1) * lngStep)},
-                        {lat: minLat + ((row + 1) * latStep), lng: minLng + ((col + 1) * lngStep)},
-                        {lat: minLat + ((row + 1) * latStep), lng: minLng + (col * lngStep)}
-                    ];
+                    const sw = {lat: minLat + (row * latStep), lng: minLng + (col * lngStep)};
+                    const se = {lat: minLat + (row * latStep), lng: minLng + ((col + 1) * lngStep)};
+                    const ne = {lat: minLat + ((row + 1) * latStep), lng: minLng + ((col + 1) * lngStep)};
+                    const nw = {lat: minLat + ((row + 1) * latStep), lng: minLng + (col * lngStep)};
 
+                    const center = {lat: (sw.lat + ne.lat) / 2, lng: (sw.lng + ne.lng) / 2};
+
+                    // only create grid cell if its center falls inside the study polygon
+                    if (!pointInPolygon(center.lat, center.lng, studyCoords)) continue;
+
+                    const zoneCoords = [sw, se, ne, nw];
                     const zoneId = `Zone ${zoneNumber.toString().padStart(3, '0')}`;
 
                     const zonePolygon = new google.maps.Polygon({
