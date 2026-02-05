@@ -519,7 +519,7 @@
     <div class="container">
         <header>
             <div class="header-content">
-                <h1>Recensement du Mobilier Urbain</h1>
+                <h1>Recensement du patrimoine</h1>
                 <p>Aidez-nous à améliorer notre territoire - Zone Basse Deûle et Lys</p>
             </div>
             <div class="header-right">
@@ -947,7 +947,7 @@
             e.preventDefault();
             const zoneId = document.getElementById('zoneName').value; const comment = document.getElementById('comment').value; const theme = document.querySelector('input[name="theme"]:checked');
             if (!zoneId) { showAlert('Veuillez sélectionner une zone sur la carte', 'error'); return; }
-            if (!theme) { showAlert('Veuillez sélectionner un type de mobilier urbain', 'error'); return; }
+            if (!theme) { showAlert('Veuillez sélectionner un type de mobilier', 'error'); return; }
             const coords = currentMarker && currentMarker.getPosition ? currentMarker.getPosition().toJSON() : null;
             const feedback = { id: Date.now(), zone: zoneId, theme: theme.value, date: new Date().toLocaleString('fr-FR'), comment: comment, photos: selectedPhotos.map(p => p.dataUrl), coords: coords };
             feedbackData.push(feedback); localStorage.setItem('feedbackData', JSON.stringify(feedbackData));
