@@ -13,7 +13,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Cambria Math', Cambria, serif;
             background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
             min-height: 100vh;
             padding: 20px;
@@ -904,7 +904,7 @@
             const label = String(theme).replace(/</g, '').replace(/>/g, '');
             const initial = label ? label.charAt(0).toUpperCase() : '';
             const size = MARKER_SIZE;
-            const svg = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>\n                <circle cx='${size/2}' cy='${size/2}' r='${Math.floor(size/2)-2}' fill='#c31432' />\n                <text x='${size/2}' y='${size/2+4}' font-family='Segoe UI, Arial, sans-serif' font-size='12' fill='white' text-anchor='middle'>${initial}</text>\n            </svg>`;
+            const svg = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>\n                <circle cx='${size/2}' cy='${size/2}' r='${Math.floor(size/2)-2}' fill='#c31432' />\n                <text x='${size/2}' y='${size/2+4}' font-family='Cambria Math, Cambria, serif' font-size='12' fill='white' text-anchor='middle'>${initial}</text>\n            </svg>`;
             const url = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
             const marker = new google.maps.Marker({position: position, map: map, title: label, visible: map.getZoom ? (map.getZoom() >= MARKER_VISIBLE_ZOOM) : false, optimized: false, icon: {url: url, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(Math.round(size/2), size)}});
             return marker;
