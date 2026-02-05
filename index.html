@@ -329,28 +329,28 @@
 
         /* Quick links - consistent small size to avoid overlap */
         .back-link {
-            position: fixed;
-            bottom: 18px;
-            right: 30px;
-            background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 30px;
-            font-size: 0.95rem;
-            text-decoration: none;
-            font-weight: 600;
-            box-shadow: 0 6px 14px rgba(195, 20, 50, 0.28);
-            transition: transform 0.15s;
-            z-index: 100;
-        }
+                position: fixed;
+                bottom: 18px;
+                right: 18px;
+                background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 30px;
+                font-size: 0.95rem;
+                text-decoration: none;
+                font-weight: 600;
+                box-shadow: 0 6px 14px rgba(195, 20, 50, 0.28);
+                transition: transform 0.15s;
+                z-index: 100;
+            }
 
-        .back-link:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(195, 20, 50, 0.4); }
+            .back-link:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(195, 20, 50, 0.4); }
 
         /* Map-only quick link - aligned with back-link size */
         .map-link {
             position: fixed;
-            bottom: 18px;
-            right: 110px; /* placed to the left of back-link */
+            bottom: 76px; /* stacked above back-link */
+            right: 18px;
             background: linear-gradient(135deg, #c31432 0%, #8b0a1a 100%);
             color: white;
             padding: 8px 12px;
