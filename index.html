@@ -65,6 +65,14 @@
             font-size: 1.2em;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
+        .logo-item img {
+            height: 38px;
+            width: auto;
+            display: block;
+        }
+        .logo-item.logo-centrale img {
+            height: 56px;
+        }
 
         .content {
             padding: 40px;
@@ -416,12 +424,12 @@
     <div class="container">
         <header>
             <div class="header-content">
-                <h1>📊 Tableau Récapitulatif du Recensement</h1>
+                <h1>Tableau Récapitulif du Recensement</h1>
                 <p>Vue d'ensemble des contributions citoyennes - Mobilier urbain</p>
             </div>
             <div class="logos">
-                <div class="logo-item">MEL</div>
-                <div class="logo-item">Centrale Lille</div>
+                <div class="logo-item"><img src="images/logo-mel_0.jpg" alt="MEL logo"></div>
+                <div class="logo-item logo-centrale"><img src="images/centrale-lille-logo.jpg" alt="Centrale Lille logo"></div>
             </div>
         </header>
 
@@ -431,22 +439,19 @@
                     <h3 id="totalComments">0</h3>
                     <p>Contributions totales</p>
                 </div>
-                <div class="stat-card">
-                    <h3 id="totalZones">0</h3>
-                    <p>Zones recensées / 200</p>
-                </div>
+                <!-- Zones recensées card removed -->
                 <div class="stat-card">
                     <h3 id="totalPhotos">0</h3>
                     <p>Photos collectées</p>
                 </div>
                 <div class="stat-card">
                     <h3 id="totalPoints">0</h3>
-                    <p>Points distribués 🏆</p>
+                    <p>Points distribués</p>
                 </div>
             </div>
 
             <div class="theme-stats">
-                <h3>📋 Répartition par type de mobilier</h3>
+                <h3>Répartition par type de mobilier</h3>
                 <div class="theme-grid" id="themeStatsGrid"></div>
             </div>
 
@@ -463,24 +468,24 @@
                     <label for="themeFilter">Filtrer par type</label>
                     <select id="themeFilter">
                         <option value="">Tous les types</option>
-                        <option value="Banc">🪑 Banc</option>
-                        <option value="Table">🍽️ Table</option>
-                        <option value="Poteau(x)">📍 Poteau(x)</option>
-                        <option value="Panneau">🪧 Panneau</option>
-                        <option value="Pont">🌉 Pont</option>
-                        <option value="Barrière">🚧 Barrière</option>
-                        <option value="Escalier">🪜 Escalier</option>
-                        <option value="Poubelle">🗑️ Poubelle</option>
-                        <option value="Lampadaire">💡 Lampadaire</option>
-                        <option value="Mobilier de sport">⚽ Mobilier de sport</option>
-                        <option value="Autre">❓ Autre</option>
+                        <option value="Banc">Banc</option>
+                        <option value="Table">Table</option>
+                        <option value="Poteau(x)">Poteau(x)</option>
+                        <option value="Panneau">Panneau</option>
+                        <option value="Pont">Pont</option>
+                        <option value="Barrière">Barrière</option>
+                        <option value="Escalier">Escalier</option>
+                        <option value="Poubelle">Poubelle</option>
+                        <option value="Lampadaire">Lampadaire</option>
+                        <option value="Mobilier de sport">Mobilier de sport</option>
+                        <option value="Autre">Autre</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label for="searchFilter">Rechercher</label>
                     <input type="text" id="searchFilter" placeholder="Rechercher dans les descriptions...">
                 </div>
-                <button class="export-btn" onclick="exportToCSV()">📥 Exporter CSV</button>
+                <button class="export-btn" onclick="exportToCSV()">Exporter CSV</button>
             </div>
 
             <div class="feedback-table">
@@ -508,7 +513,7 @@
     </div>
 
     <a href="feedback-map.html" class="back-link">← Retour au formulaire</a>
-    <a href="map-only.html" class="map-link">🗺️ Carte (filtrer)</a>
+    <a href="map-only.html" class="map-link">Carte (filtrer)</a>
 
     <div class="modal" id="imageModal" onclick="this.classList.remove('active')">
         <div class="modal-content">
@@ -522,24 +527,24 @@
         let filteredData = [...feedbackData];
 
         const themeIcons = {
-            'Banc': '🪑',
-            'Table': '🍽️',
-            'Poteau(x)': '📍',
-            'Panneau': '🪧',
-            'Pont': '🌉',
-            'Barrière': '🚧',
-            'Escalier': '🪜',
-            'Poubelle': '🗑️',
-            'Lampadaire': '💡',
-            'Mobilier de sport': '⚽',
-            'Autre': '❓'
+            'Banc': '',
+            'Table': '',
+            'Poteau(x)': '',
+            'Panneau': '',
+            'Pont': '',
+            'Barrière': '',
+            'Escalier': '',
+            'Poubelle': '',
+            'Lampadaire': '',
+            'Mobilier de sport': '',
+            'Autre': ''
         };
 
         function updateStats() {
             document.getElementById('totalComments').textContent = feedbackData.length;
             
             const uniqueZones = new Set(feedbackData.map(f => f.zone));
-            document.getElementById('totalZones').textContent = uniqueZones.size;
+            // 'totalZones' card removed from the UI; value computed but not displayed
             
             const totalPhotos = feedbackData.reduce((sum, f) => sum + f.photos.length, 0);
             document.getElementById('totalPhotos').textContent = totalPhotos;
@@ -635,7 +640,7 @@
                     <td>
                         <div class="actions">
                             <button class="action-btn delete-btn" onclick="deleteFeedback(${feedback.id})">
-                                🗑️ Supprimer
+                                Supprimer
                             </button>
                         </div>
                     </td>

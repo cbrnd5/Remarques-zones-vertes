@@ -73,6 +73,14 @@
             font-size: 1.2em;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
+        .logo-item img {
+            height: 38px;
+            width: auto;
+            display: block;
+        }
+        .logo-item.logo-centrale img {
+            height: 56px;
+        }
 
         .user-points {
             background: rgba(255,255,255,0.2);
@@ -511,27 +519,27 @@
     <div class="container">
         <header>
             <div class="header-content">
-                <h1>🗺️ Recensement du Mobilier Urbain</h1>
+                <h1>Recensement du Mobilier Urbain</h1>
                 <p>Aidez-nous à améliorer notre territoire - Zone Basse Deûle et Lys</p>
             </div>
             <div class="header-right">
                 <div class="logos">
-                    <div class="logo-item">MEL</div>
-                    <div class="logo-item">Centrale Lille</div>
+                    <div class="logo-item"><img src="images/logo-mel_0.jpg" alt="MEL logo"></div>
+                    <div class="logo-item logo-centrale"><img src="images/centrale-lille-logo.jpg" alt="Centrale Lille logo"></div>
                 </div>
                 <div class="user-points">
                     <div>
                         <div class="points-value" id="userPoints">0</div>
                         <div class="points-label">points</div>
                     </div>
-                    🏆
+                    
                 </div>
             </div>
         </header>
 
         <div class="main-content">
             <div class="map-section">
-                <h2>📍 Sélectionnez une zone</h2>
+                <h2>Sélectionnez une zone</h2>
                 <div class="map-info">
                     <strong>Instructions :</strong> Cliquez sur une zone de la carte pour la sélectionner et partager vos observations.
                 </div>
@@ -539,7 +547,7 @@
             </div>
 
             <div class="form-section">
-                <h2>✏️ Votre contribution</h2>
+                <h2>Votre contribution</h2>
                 <form id="feedbackForm">
                     <div class="form-group">
                         <label>Zone sélectionnée</label>
@@ -628,25 +636,25 @@
                         <label>Photos (max 3)</label>
                         <div class="photo-upload" onclick="document.getElementById('photoInput').click()">
                             <input type="file" id="photoInput" accept="image/*" multiple>
-                            <p style="font-size: 1.2em; margin-bottom: 10px;">📸 Cliquez pour ajouter des photos</p>
+                            <p style="font-size: 1.2em; margin-bottom: 10px;">Cliquez pour ajouter des photos</p>
                             <p style="color: #666; font-size: 0.9em;">JPG, PNG - Maximum 3 photos</p>
                         </div>
                         <div class="photo-preview" id="photoPreview"></div>
                     </div>
 
-                    <button type="submit" class="submit-btn">🚀 Envoyer ma contribution</button>
+                    <button type="submit" class="submit-btn">Envoyer ma contribution</button>
                 </form>
 
                 <div class="previous-comments" id="previousComments" style="display: none;">
-                    <h3>💬 Contributions précédentes pour cette zone</h3>
+                    <h3>Contributions précédentes pour cette zone</h3>
                     <div id="commentsList"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <a href="map-only.html" class="map-link">🗺️ Carte (filtrer)</a>
-    <a href="index.html" class="admin-link">📊 Tableau récapitulatif</a>
+    <a href="map-only.html" class="map-link">Carte (filtrer)</a>
+    <a href="index.html" class="admin-link">Tableau récapitulatif</a>
 
     <div id="alertContainer" class="alert-container"></div>
 
@@ -919,7 +927,7 @@
             const commentsList = document.getElementById('commentsList');
             if (zoneComments.length === 0) { commentsSection.style.display = 'none'; return; }
             commentsSection.style.display = 'block';
-            commentsList.innerHTML = zoneComments.map(comment => `\n                <div class="comment-item">\n                    <div class="comment-header">\n                        <div class="comment-date">📅 ${comment.date}</div>\n                        <div class="comment-theme">${comment.theme}</div>\n                    </div>\n                    <div class="comment-text">${comment.comment}</div>\n                    ${comment.photos.length > 0 ? `\n                        <div class="comment-photos">\n                            ${comment.photos.map(photo => `\n                                <img src="${photo}" alt="Photo" onclick="showImageModal('${photo}')">\n                            `).join('')}\n                        </div>\n                    ` : ''}\n                </div>\n            `).join('');
+            commentsList.innerHTML = zoneComments.map(comment => `\n                <div class="comment-item">\n                    <div class="comment-header">\n                        <div class="comment-date">${comment.date}</div>\n                        <div class="comment-theme">${comment.theme}</div>\n                    </div>\n                    <div class="comment-text">${comment.comment}</div>\n                    ${comment.photos.length > 0 ? `\n                        <div class="comment-photos">\n                            ${comment.photos.map(photo => `\n                                <img src="${photo}" alt="Photo" onclick="showImageModal('${photo}')">\n                            `).join('')}\n                        </div>\n                    ` : ''}\n                </div>\n            `).join('');
         }
 
         document.getElementById('photoInput').addEventListener('change', function(e) {
@@ -945,7 +953,7 @@
             feedbackData.push(feedback); localStorage.setItem('feedbackData', JSON.stringify(feedbackData));
             userPoints++; localStorage.setItem('userPoints', userPoints.toString()); document.getElementById('userPoints').textContent = userPoints;
             if (coords) { const m = createLabelMarker(theme.value, new google.maps.LatLng(coords.lat, coords.lng)); mapMarkers.push(m); }
-            showAlert('✅ Contribution enregistrée avec succès ! +1 point 🏆', 'success'); document.getElementById('feedbackForm').reset(); selectedPhotos = []; updatePhotoPreview(); showPreviousComments(zoneId);
+            showAlert('Contribution enregistrée avec succès ! +1 point', 'success'); document.getElementById('feedbackForm').reset(); selectedPhotos = []; updatePhotoPreview(); showPreviousComments(zoneId);
         });
 
     
